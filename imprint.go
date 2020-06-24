@@ -5,24 +5,71 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 )
 
-func check(err error) {
-	if err != nil {
-		panic(err)
+const header = "bbbxxxxxxxxxxxxxxxxxxxxx\nxx\nxx file: fff\nxx\nxx author: aaa\nxx\nxx created: ttt\nxx\nxxxxxxxxxxxxxxxxxxxxxeee\n"
+
+var language = map[string][]string{
+	".py":  {"#", "#", "#"},
+	".cpp": {"/*", "*", "*/"},
+}
+
+func main() {
+	boolPtr := flag.Bool("single", false, "a boolean for setting single line")
+	flag.Parse()
+	args := flag.Args()
+
+	if *boolPtr {
+		fmt.Println("boolen present")
+	}
+
+	if argLength := len(args); argLength < 1 {
+		printUsage()
+		os.Exit(1)
+	}
+
+	for i := 0; i < len(args); i++ {
+		currentArg := args[i]
+		_, file := filepath.Split(currentArg)
+		if file == "" || isDirectory(currentArg) {
+			fmt.Println("Only enter filepaths, not directory paths")
+			os.Exit(2)
+		}
+	}
+
+	for i := 0; i < len(args); i++ {
+		currentArg := args[i]
+		file, _ := filepath.Abs(currentArg)
+		writeFile(file, createString(file))
 	}
 }
 
-func printUsage() {
-	fmt.Println("Usage of imprint:")
-	flag.PrintDefaults()
+func createString(file string) string {
+	currentTime := time.Now()
+	_, fileName := filepath.Split(file)
+	fileExtention := filepath.Ext(file)
+	author := "josh"
+	values, found := language[fileExtention]
+	if !found {
+		values = []string{"#", "#", "#"}
+	}
+	r := strings.NewReplacer(
+		"bbb", values[0],
+		"x", values[1],
+		"eee", values[2],
+		"fff", fileName,
+		"aaa", author,
+		"ttt", currentTime.Format("January 2, 2006"))
+	return (r.Replace(header))
 }
 
-func writeFile(path string) {
+func writeFile(path string, content string) {
 	f, err := os.Create(path)
 	defer f.Close()
 	check(err)
-	_, err = f.WriteString("writes\n")
+	_, err = f.WriteString(content)
 	check(err)
 }
 
@@ -37,33 +84,13 @@ func isDirectory(path string) bool {
 	return status
 }
 
-func main() {
-	boolPtr := flag.Bool("single", false, "a boolean for setting single line")
-	flag.Parse()
-	args := flag.Args()
-	fmt.Println("args:", args)
-	fmt.Println("single:", *boolPtr)
-	fmt.Println("tail:", flag.Args())
-	// fmt.Println(ip)
-	if argLength := len(args); argLength < 1 {
-		printUsage()
-		os.Exit(1)
-	}
-	// stuff, _ := filepath.Abs(args[0])
-	// fmt.Println(len(args))
-	// fmt.Println("filepath:", stuff)
-	for i := 0; i < len(args); i++ {
-		currentArg := args[i]
-		_, file := filepath.Split(currentArg)
-		if file == "" || isDirectory(currentArg) {
-			fmt.Println("Only enter filepaths, not directory paths")
-			os.Exit(2)
-		}
-	}
+func printUsage() {
+	fmt.Println("Usage of imprint:")
+	flag.PrintDefaults()
+}
 
-	for i := 0; i < len(args); i++ {
-		file, _ := filepath.Abs(args[i])
-		fmt.Println(file)
-		writeFile(file)
+func check(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
